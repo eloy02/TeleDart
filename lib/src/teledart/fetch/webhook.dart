@@ -19,6 +19,7 @@
 import 'dart:async';
 import 'dart:io' as io;
 import 'dart:convert';
+import 'dart:js';
 
 import '../../telegram/telegram.dart';
 import '../../telegram/model.dart';
@@ -78,8 +79,15 @@ class Webhook {
 
   /// Set webhook on telegram server.
   Future<void> setWebhook() async {
-    Future<dynamic> serverFuture = io.HttpServer.bindSecure(
-        io.InternetAddress.anyIPv4.address, port, _context);
+    Future<dynamic> serverFuture;
+
+    if (_context != null) {
+      serverFuture = io.HttpServer.bindSecure(
+          io.InternetAddress.anyIPv4.address, port, _context);
+    } else {
+      serverFuture =
+          io.HttpServer.bind(io.InternetAddress.anyIPv4.address, port);
+    }
 
     await serverFuture.then((server) => _server = server).then((_) {
       telegram.setWebhook('${url}:${port}${secretPath}',
