@@ -97,17 +97,24 @@ class TeleDart {
   /// Provide [privateKey] and [certificate] pair for HTTPS configuration
   ///
   /// See: https://core.telegram.org/bots/api#setwebhook
-  Future<void> setupWebhook(
-      String url, String secretPath, io.File certificate, io.File privateKey,
+  Future<void> setupWebhook(String url, String secretPath,
       {int port = 443,
       bool uploadCertificate = false,
       int max_connections = 40,
-      List<String> allowed_updates}) async {
-    _webhook = Webhook(telegram, url, secretPath, certificate, privateKey,
-        port: port,
-        uploadCertificate: uploadCertificate,
-        max_connections: max_connections,
-        allowed_updates: allowed_updates);
+      List<String> allowed_updates,
+      io.File certificate,
+      io.File privateKey}) async {
+    _webhook = Webhook(
+      telegram,
+      url,
+      secretPath,
+      port: port,
+      uploadCertificate: uploadCertificate,
+      max_connections: max_connections,
+      allowed_updates: allowed_updates,
+      certificate: null,
+      privateKey: null,
+    );
 
     return _webhook.setWebhook();
   }

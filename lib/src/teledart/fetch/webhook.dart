@@ -45,12 +45,13 @@ class Webhook {
   ///
   /// Throws [WebhookException] if [port] is not supported by Telegram
   /// or [max_connections] is less than 1 or greater than 100.
-  Webhook(this.telegram, this.url, this.secretPath, this.certificate,
-      this.privateKey,
+  Webhook(this.telegram, this.url, this.secretPath,
       {this.port = 443,
       this.uploadCertificate = false,
       this.max_connections = 40,
-      this.allowed_updates}) {
+      this.allowed_updates,
+      this.privateKey,
+      this.certificate}) {
     if (![443, 80, 88, 8443].contains(port)) {
       throw WebhookException(
           'Ports currently supported for Webhooks: 443, 80, 88, 8443.');
@@ -68,9 +69,11 @@ class Webhook {
     }
 
     // serup SecurityContext
-    _context = io.SecurityContext();
-    _context.useCertificateChainBytes(certificate.readAsBytesSync());
-    _context.usePrivateKeyBytes(privateKey.readAsBytesSync());
+    if (certificate != null && privateKey != null) {
+      _context = io.SecurityContext();
+      _context.useCertificateChainBytes(certificate.readAsBytesSync());
+      _context.usePrivateKeyBytes(privateKey.readAsBytesSync());
+    }
   }
 
   /// Set webhook on telegram server.
