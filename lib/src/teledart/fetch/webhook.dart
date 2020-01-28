@@ -45,8 +45,9 @@ class Webhook {
   ///
   /// Throws [WebhookException] if [port] is not supported by Telegram
   /// or [max_connections] is less than 1 or greater than 100.
-  Webhook(this.telegram, this.url, this.secretPath,
-      {this.port = 443,
+  Webhook(this.telegram, this.url,
+      {this.secretPath = '',
+      this.port = 443,
       this.uploadCertificate = false,
       this.max_connections = 40,
       this.allowed_updates,
