@@ -20,7 +20,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io' as io;
 
-import 'package:http/http.dart' as http;
+import 'package:dio/dio.dart';
+import 'package:path/path.dart';
 
 import 'model.dart';
 import '../util/http_client.dart';
@@ -93,12 +94,14 @@ class Telegram {
           allowed_updates == null ? '' : jsonEncode(allowed_updates),
     };
     if (certificate != null) {
-      // filename cannot be empty to post to Telegram server
-      var files = <http.MultipartFile>[];
-      files.add(http.MultipartFile(
-          'certificate', certificate.openRead(), certificate.lengthSync(),
-          filename: '${certificate.lengthSync()}'));
-      return await _client.httpMultipartPost(requestUrl, files, body: body);
+      var data = FormData.fromMap(body)
+        ..files.addAll([
+          MapEntry(
+              'certificate',
+              MultipartFile.fromFileSync(certificate.path,
+                  filename: basename(certificate.path)))
+        ]);
+      return await _client.httpFormDataPost(requestUrl, data);
     } else {
       return await _client.httpPost(requestUrl, body: body);
     }
@@ -197,21 +200,27 @@ class Telegram {
       'reply_markup': reply_markup == null ? '' : jsonEncode(reply_markup)
     };
 
+    if (photo == null) {
+      return Future.error(TelegramException('Photo is null'));
+    }
+
+    var data = FormData.fromMap(body);
+
     if (photo is io.File) {
-      // filename cannot be empty to post to Telegram server
-      var files = <http.MultipartFile>[];
-      files.add(http.MultipartFile(
-          'photo', photo.openRead(), photo.lengthSync(),
-          filename: '${photo.lengthSync()}'));
-      return Message.fromJson(
-          await _client.httpMultipartPost(requestUrl, files, body: body));
+      data.files.addAll([
+        MapEntry(
+            'photo',
+            MultipartFile.fromFileSync(photo.path,
+                filename: basename(photo.path)))
+      ]);
     } else if (photo is String) {
-      body.addAll({'photo': photo});
-      return Message.fromJson(await _client.httpPost(requestUrl, body: body));
+      data.fields.add(MapEntry('photo', photo));
     } else {
       return Future.error(TelegramException(
           'Attribute \'photo\' can only be either io.File or String (Telegram file_id or image url)'));
     }
+
+    return Message.fromJson(await _client.httpFormDataPost(requestUrl, data));
   }
 
   /// Use this method to send audio files,
@@ -249,50 +258,37 @@ class Telegram {
       'reply_markup': reply_markup == null ? '' : jsonEncode(reply_markup)
     };
 
+    if (audio == null) {
+      return Future.error(TelegramException('Audio is null'));
+    }
+
+    var data = FormData.fromMap(body);
+
     if (audio is io.File) {
-      // filename cannot be empty to post to Telegram server
-      var files = List<http.MultipartFile>.filled(
-          1,
-          http.MultipartFile('audio', audio.openRead(), audio.lengthSync(),
-              filename: '${audio.lengthSync()}'));
-      if (thumb != null) {
-        if (thumb is io.File) {
-          files.add(http.MultipartFile(
-              'thumb', thumb.openRead(), thumb.lengthSync(),
-              filename: '${thumb.lengthSync()}'));
-        } else if (thumb is String) {
-          body.addAll({'thumb': thumb});
-        } else {
-          return Future.error(TelegramException(
-              'Attribute \'thumb\' can only be either io.File or String (Telegram file_id or image url)'));
-        }
-      }
-      return Message.fromJson(
-          await _client.httpMultipartPost(requestUrl, files, body: body));
+      data.files.add(MapEntry(
+          'audio',
+          MultipartFile.fromFileSync(audio.path,
+              filename: basename(audio.path))));
     } else if (audio is String) {
-      body.addAll({'audio': audio});
-      if (thumb != null) {
-        if (thumb is io.File) {
-          return Message.fromJson(await _client.httpMultipartPost(
-              requestUrl,
-              List.filled(
-                  1,
-                  http.MultipartFile(
-                      'thumb', thumb.openRead(), thumb.lengthSync(),
-                      filename: '${thumb.lengthSync()}')),
-              body: body));
-        } else if (thumb is String) {
-          body.addAll({'thumb': thumb});
-        } else {
-          return Future.error(TelegramException(
-              'Attribute \'thumb\' can only be either io.File or String (Telegram file_id or image url)'));
-        }
-      }
-      return Message.fromJson(await _client.httpPost(requestUrl, body: body));
+      data.fields.add(MapEntry('audio', audio));
     } else {
       return Future.error(TelegramException(
           'Attribute \'audio\' can only be either io.File or String (Telegram file_id or image url)'));
     }
+
+    if (thumb != null && thumb is io.File) {
+      data.files.add(MapEntry(
+          'thumb',
+          MultipartFile.fromFileSync(thumb.path,
+              filename: basename(thumb.path))));
+    } else if (thumb != null && thumb is String) {
+      data.fields.add(MapEntry('audio', audio));
+    } else if (thumb != null) {
+      return Future.error(TelegramException(
+          'Attribute \'thumb\' can only be either io.File or String (Telegram file_id or image url)'));
+    }
+
+    return Message.fromJson(await _client.httpFormDataPost(requestUrl, data));
   }
 
   /// Use this method to send general files. On success, the sent [Message] is returned.
@@ -319,51 +315,37 @@ class Telegram {
       'reply_markup': reply_markup == null ? '' : jsonEncode(reply_markup)
     };
 
+    if (document == null) {
+      return Future.error(TelegramException('Document is null'));
+    }
+
+    var data = FormData.fromMap(body);
+
     if (document is io.File) {
-      // filename cannot be empty to post to Telegram server
-      var files = List<http.MultipartFile>.filled(
-          1,
-          http.MultipartFile(
-              'document', document.openRead(), document.lengthSync(),
-              filename: '${document.lengthSync()}'));
-      if (thumb != null) {
-        if (thumb is io.File) {
-          files.add(http.MultipartFile(
-              'thumb', thumb.openRead(), thumb.lengthSync(),
-              filename: '${thumb.lengthSync()}'));
-        } else if (thumb is String) {
-          body.addAll({'thumb': thumb});
-        } else {
-          return Future.error(TelegramException(
-              'Attribute \'thumb\' can only be either io.File or String (Telegram file_id or image url)'));
-        }
-      }
-      return Message.fromJson(
-          await _client.httpMultipartPost(requestUrl, files, body: body));
+      data.files.add(MapEntry(
+          'document',
+          MultipartFile.fromFileSync(document.path,
+              filename: basename(document.path))));
     } else if (document is String) {
-      body.addAll({'document': document});
-      if (thumb != null) {
-        if (thumb is io.File) {
-          return Message.fromJson(await _client.httpMultipartPost(
-              requestUrl,
-              List.filled(
-                  1,
-                  http.MultipartFile(
-                      'thumb', thumb.openRead(), thumb.lengthSync(),
-                      filename: '${thumb.lengthSync()}')),
-              body: body));
-        } else if (thumb is String) {
-          body.addAll({'thumb': thumb});
-        } else {
-          return Future.error(TelegramException(
-              'Attribute \'thumb\' can only be either io.File or String (Telegram file_id or image url)'));
-        }
-      }
-      return Message.fromJson(await _client.httpPost(requestUrl, body: body));
+      data.fields.add(MapEntry('document', document));
     } else {
       return Future.error(TelegramException(
           'Attribute \'document\' can only be either io.File or String (Telegram file_id or image url)'));
     }
+
+    if (thumb != null && thumb is io.File) {
+      data.files.add(MapEntry(
+          'thumb',
+          MultipartFile.fromFileSync(thumb.path,
+              filename: basename(thumb.path))));
+    } else if (thumb != null && thumb is String) {
+      data.fields.add(MapEntry('thumb', thumb));
+    } else if (thumb != null) {
+      return Future.error(TelegramException(
+          'Attribute \'thumb\' can only be either io.File or String (Telegram file_id or image url)'));
+    }
+
+    return Message.fromJson(await _client.httpFormDataPost(requestUrl, data));
   }
 
   /// Use this method to send video files,
