@@ -69,7 +69,7 @@ class Webhook {
       secretPath = '\/' + secretPath;
     }
 
-    // serup SecurityContext
+    // setup SecurityContext
     if (certificate != null && privateKey != null) {
       _context = io.SecurityContext();
       _context.useCertificateChainBytes(certificate.readAsBytesSync());
